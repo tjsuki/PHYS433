@@ -1,0 +1,427 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Nuclear Electronics Individual Analysis\n",
+    "\n",
+    "Use this template to carry out the analysis tasks for the Nuclear Electronics experiment.  You may need to consult the documentation for different Python packages.  Also recommended: the [Whirlwind Tour of Python](https://jakevdp.github.io/WhirlwindTourOfPython/) and the [Python Data Science Handbook](https://jakevdp.github.io/PythonDataScienceHandbook/) both by Jake VanderPlas."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## First, import some packages\n",
+    "\n",
+    "This is a good idea at the beginning of your notebook to include the packages that you will need.  We will use the four shown below here.  A brief description:\n",
+    "* `numpy` is the foundational package for Python numerical work. It extends and speeds up array operations beyond standard Python, and it includes almost all math functions that you would need for example `sqrt()` (square root) or `cos()` (cosine).  These would be written in code as `np.sqrt()` or `np.cos()`.\n",
+    "* `scipy` is a huge collection of scientific data analysis functions, routines, physicical constants, etc.  This is the second most used package for scientific work.  In this notebook, we will only make use of one physical constant (the speed of light).  Documentation is at [SciPy.org](https://docs.scipy.org/doc/scipy/reference/) with the constants subpackage at https://docs.scipy.org/doc/scipy/reference/constants.html.\n",
+    "* `uncertainties` is a very useful small package that simplifies uncertainty propagation and printing out of quantities with uncertainty.  As part of this notebook, you will calculate an uncertainty the \"hard way\" by explicit calculation and by using the Uncertainties package. Documentation is at https://pythonhosted.org/uncertainties/\n",
+    "* `matplotlib` is *the* standard plotting package for scientific Python.  We will use a subset called `pyplot` which is modeled after the plotting functions used in MATLAB. The last line below, `%matplotlib inline`, simply forces the plots to appear within the notebook.    "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Run this cell with Shift-Enter, and wait until the asterisk changes to a number, i.e., [*] becomes [1]\n",
+    "import numpy as np\n",
+    "import scipy.constants as const\n",
+    "import uncertainties as unc\n",
+    "import matplotlib.pyplot as plt\n",
+    "%matplotlib inline"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Cable propagation speed\n",
+    "\n",
+    "### Part 1: Just the value\n",
+    "\n",
+    "From the video on Signal Speed & Cable Impedance, extract the reflection time and cable length for the long cable used.  Assign them to the variables below. Then calculate the propagation speed.  Be careful with units!  What is the speed in m/s?  What is it in units of the speed of light $c$?  The speed of light is given by `const.c`.  Check this with `print(const.c)`."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 27,
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Propagation speed = 194530979.58 m/s\n",
+      "Propagation speed = 0.6489 c\n"
+     ]
+    }
+   ],
+   "source": [
+    "cable_length = 28.1\n",
+    "delta_t = 288.9*1e-9\n",
+    "\n",
+    "prop_speed = cable_length*2 / delta_t\n",
+    "print('Propagation speed = {:.2f} m/s'.format(prop_speed))\n",
+    "\n",
+    "speed_in_c = prop_speed / const.c\n",
+    "print('Propagation speed = {:.4f} c'.format(speed_in_c))\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Part 2: Calculating uncertainty, the hard(er) way\n",
+    "\n",
+    "Assume the uncertainty in the length is +/- the least digit and that the uncertainty in the reflection time is 2 percent.  Use the formula for the propagation speed to derive an error-propagation formula for the same, and caluclate the uncertainty in the speed $v$.  See [Notes on data analysis and experimental uncertainty](https://courses.washington.edu/phys431/uncertainty_notes.pdf) or [Quickie Statistics Summary](https://courses.washington.edu/phys431/331statistics05b.pdf) from the course website.  Put the uncertainty values into the `sigma_<variable>` forms below.\n",
+    "\n",
+    "Then make sure to print out the values above with their uncertainty, in both m/s and units of c."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Propagation speed = 1.945e+08 +/- 3951730.4919090173 m/s\n",
+      "Propagation speed = 0.649 +/- 0.013181554060005797 c\n"
+     ]
+    }
+   ],
+   "source": [
+    "cable_length =  28.1\n",
+    "sigma_cable_length = 0.1\n",
+    "delta_t = 288.9*1e-9\n",
+    "sigma_delta_t =  delta_t * 0.02\n",
+    "\n",
+    "prop_speed = cable_length*2 / delta_t\n",
+    "sigma_prop_speed = np.sqrt((sigma_cable_length/cable_length)**2 \n",
+    "                           + (sigma_delta_t/delta_t)**2) * prop_speed\n",
+    "\n",
+    "print('Propagation speed = {:.4g} +/- {} m/s'.format(prop_speed, sigma_prop_speed))\n",
+    "\n",
+    "speed_in_c = prop_speed / const.c\n",
+    "sigma_speed_in_c = sigma_prop_speed / const.c\n",
+    "print('Propagation speed = {:.3f} +/- {} c'.format(speed_in_c, sigma_speed_in_c))\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Part 3: Calculating uncertainty the easy way\n",
+    "\n",
+    "Read the main page on the Python package [Uncertainties](https://pythonhosted.org/uncertainties/index.html) and use the `ufloat()` function to redefine `cable_length` and `delta_t` to be quantities with uncertainty.  Then simply calculate with them as you did in Part 1 to calculate the propagation speed, and print the result. Notice that you get the uncertainty automatically.  It should be the same as you calculated earlier.  (No? There's a mistake, find it.)\n",
+    "\n",
+    "Then print it with the format string `{:.2uP}`, as in `print('Speed = {:.2uP} m/s'.format(prop_speed))` to see how easy it is to get the sig figs correct."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Speed = (1.945±0.040)×10⁸ m/s\n",
+      "Speed = 0.649±0.013 c\n"
+     ]
+    }
+   ],
+   "source": [
+    "cable_length = unc.ufloat(28.1, 0.1)\n",
+    "dt = 288.9*1e-9\n",
+    "delta_t =  unc.ufloat(dt, dt*0.02)\n",
+    "\n",
+    "\n",
+    "prop_speed = 2*cable_length / delta_t\n",
+    "speed_in_c = prop_speed / const.c\n",
+    "# Print it out, according to the above\n",
+    "print('Speed = {:.2uP} m/s'.format(prop_speed))\n",
+    "print('Speed = {:.2uP} c'.format(speed_in_c))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Cable Impedances\n",
+    "\n",
+    "Here, you will use Python's list type, and then a numpy array to calculate mean values for the \"50 ohm\" cable and \"Mystery Cable 1\".  (Mystery Cable 2 is optional).  Then you will use these data to calculate an uncertainty and the Uncertainties package to display it.\n",
+    "\n",
+    "In the cell below are two empty Python lists.  Fill them in with comma-separated values from the data set posted on the experiment page."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "fifty_ohm_data = [48.9, 49.7, 46.7, 51.3, 50.2, 51.7, 52.0, 50.5, 50.8, 52.4,\n",
+    "                  50.7, 48.6, 50.9, 50.4, 51.5, 49.8, 49.0, 51.2, 48.8, 50.5]\n",
+    "mystery_1_data = [70.6, 72.2, 70.3, 69.7, 70.5, 70.2, 71.7, 72.2, 71.7, 72.1,\n",
+    "                  72.4, 71.5, 71.9, 72.4, 71.1, 71.3, 71.4, 71.7, 70.9, 72.8]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Make a histogram\n",
+    "\n",
+    "In the [Python Data Science Handbook](https://jakevdp.github.io/PythonDataScienceHandbook/), have a look at chapter 4 in matplotlib.  In particular, use the code under \"Histograms, Binnings and Density\" to plot a histogram of the two data sets.  (Note: you do not need to use the `plt.style.use('seaborn-white')` command, but try it if you like.  Also, it should be obvious that you are not using the `data = np.random.randn(1000)` command&mdash;this just makes a set of random numbers to plot.  You already have the data above; plot that!)\n",
+    "\n",
+    "Make sure to label the axes and give your plot(s) a title and a legend (if there is more than one data set).  These topics are treated in the section \"Simple Line Plots\"."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 26,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "image/png": "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\n",
+      "text/plain": [
+       "<Figure size 720x720 with 2 Axes>"
+      ]
+     },
+     "metadata": {
+      "needs_background": "light"
+     },
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "\n",
+    "plt.rcParams[\"figure.figsize\"] = (10, 10)\n",
+    "fig, (ax1, ax2) = plt.subplots(2)\n",
+    "\n",
+    "ax1.hist(fifty_ohm_data, bins=15, density=True, color='royalblue');\n",
+    "ax1.set_title('Impedence of 50 Ohm Cable');\n",
+    "ax1.set_ylabel('Counts');\n",
+    "ax1.set_xlabel('Impedence (Ohm)');\n",
+    "\n",
+    "ax2.hist(mystery_1_data, bins=15, density=True, color='orangered');\n",
+    "ax2.set_title('Impedence of Mystery Cable 1');\n",
+    "ax2.set_ylabel('Counts');\n",
+    "ax2.set_xlabel('Impedence (Ohm)');"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Calculate the mean and standard deviation of the data sets\n",
+    "\n",
+    "Use the numpy array functions mean() and std(), used here as `np.mean()`, `np.std()` to find the mean and standard deviations of the two data sets, and print these results.  Search for \"numpy.mean()\" and \"numpy.std()\" in the Numpy documentation under **Help** or in \"Aggregations: Min, Max, and Everything In Between\" in the Data Science Handbook."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 25,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Mean of 50 ohm cable impedence is 50.28 ohms\n",
+      "Mean of mystery cable impedence is 71.43 ohms\n"
+     ]
+    }
+   ],
+   "source": [
+    "mean_fiftyohm = np.mean(fifty_ohm_data)\n",
+    "mean_mystery = np.mean(mystery_1_data)\n",
+    "print('Mean of 50 ohm cable impedence is {} ohms'.format(mean_fiftyohm))\n",
+    "print('Mean of mystery cable impedence is {} ohms'.format(mean_mystery))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Convert the data sets to Numpy arrays and explore them\n",
+    "\n",
+    "The data sets as stored are simple Python lists.  You can use Numpy functions to calculate with them, but there is much more you can do with a Numpy array.  Here, convert the lists to Numpy arrays with the `np.array()` function.  For example, `my_np_arr = np.array(my_list)`.  Then type `dir(my_np_arr)` (using your array name) in the cell below to see the different methods.  Look for `'mean'` and `'std'`.  Then do the same with the original array, and notice the difference.\n",
+    "\n",
+    "What happens if you try to add 20 to your Numpy array (e.g., `20 + my_np_arr`) versus your original list (e.g. `20 + my_list`)?  Try to print both versions."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 24,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "[68.9 69.7 66.7 71.3 70.2 71.7 72.  70.5 70.8 72.4 70.7 68.6 70.9 70.4\n",
+      " 71.5 69.8 69.  71.2 68.8 70.5]\n",
+      "20 is added to each value in the Numpy array\n",
+      "Adding a value to a list is an invalid operation\n"
+     ]
+    }
+   ],
+   "source": [
+    "np_50_data = np.array(fifty_ohm_data)\n",
+    "np_mystery_data = np.array(mystery_1_data)\n",
+    "\n",
+    "np_arr = 20 + np_50_data\n",
+    "print(np_arr)\n",
+    "print('20 is added to each value in the Numpy array')\n",
+    "#orig_list = 20 + fifty_ohm_data\n",
+    "print('Adding a value to a list is an invalid operation')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "See what `print(help(np_50_data))` does (where `np_50_data` is the name of your Numpy array for the 50 ohm data).  Notice the information breaks into two subsets **attributes** and **methods**.  For example, `size` is an attribute that gives the number of elements in the array, but `mean()` is a method that operates on the array and gives the mean value of it."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "#print(help(np_50_data))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Explore the attributes and methods of your Numpy array, for example, `print('size = {}'.format(np_50_data.size))`.  Try a few others to see what they do, and whether they act as you would expect. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "size = 20\n",
+      "mean = 50.28\n",
+      "max = 52.4\n",
+      "Std Dev = 1.3366375724181927\n",
+      "Byte Size = 160\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Here are a couple.  Print at least three other attributes and methods\n",
+    "print('size = {}'.format(np_50_data.size))\n",
+    "print('mean = {}'.format(np_50_data.mean()))\n",
+    "print('max = {}'.format(np_50_data.max()))\n",
+    "print('Std Dev = {}'.format(np_50_data.std()))\n",
+    "print('Byte Size = {}'.format(np_50_data.nbytes))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Write a function to calculate the standard error of an array\n",
+    "\n",
+    "Have a look at the [Whirlwind Tour of Python](https://jakevdp.github.io/WhirlwindTourOfPython/) Chapter on [Defining Functions](https://jakevdp.github.io/WhirlwindTourOfPython/08-defining-functions.html) and write a function that will return the *standard error*, also called the *standard deviation of the mean*, of a Numpy array.  Use the template below.\n",
+    "\n",
+    "Look up what \"standard error\" is, if you do not know."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def std_err(data):\n",
+    "    '''Standard deviation (standard error) of the mean.  Requires ndarray'''\n",
+    "    # The above is a help string.\n",
+    "    npdata = np.asarray(data)  # This ensures a Numpy array exists.  The methods, etc. are now in npdata.\n",
+    "    #\n",
+    "    standard_error = npdata.std() / np.sqrt(npdata.size)\n",
+    "    #\n",
+    "    return standard_error"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Use the function to calculate the uncertainty for the 50 ohm data\n",
+    "\n",
+    "The \"standard error\" is the uncertainty in the mean of a set of data of the same type.  It describes the width of a distribution of mean values calculated from the original data set.  \n",
+    "\n",
+    "Use the function above to define a new quantity with uncertainty that gives the measured impedance of the \"50 ohm\" cable, with uncertainty.  Do the same for the \"Mystery 1\" cable.  Print out both results using correct significant figures and formatting."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 22,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Impedence of 50 ohm cable is 50.28 +/- 0.2989 ohms\n",
+      "Impedence of mystery cable is 71.43 +/- 0.1843 ohms\n"
+     ]
+    }
+   ],
+   "source": [
+    "np_50_mean = np_50_data.mean()\n",
+    "stderr_50ohm = std_err(np_50_data)\n",
+    "\n",
+    "np_mystery_mean = np_mystery_data.mean()\n",
+    "stderr_mystery = std_err(np_mystery_data)\n",
+    "\n",
+    "print('Impedence of 50 ohm cable is {} +/- {:.4f} ohms'.format(np_50_mean, stderr_50ohm))\n",
+    "print('Impedence of mystery cable is {} +/- {:.4f} ohms'.format(np_mystery_mean, stderr_mystery))"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.7.4"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}
